@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AquaGuard AI Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Tamil:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: top bar, scenario strip, three zone cards, then alerts beside tests. */
+  --bg:#f3f6f7; --surface:#ffffff; --ink:#14282f; --muted:#5a6f76; --line:#d5e0e3;
+  --accent:#0b6e8a; --accent-soft:#e1f1f5;
+  --good:#1b7a4b; --good-bg:#e3f4ea; --warn:#9a5b00; --warn-bg:#fff0d6; --crit:#b3261e; --crit-bg:#fde7e5; --info:#44606a; --info-bg:#e9eff1;
+  --font-body:'IBM Plex Sans','Noto Sans Tamil',system-ui,sans-serif; --font-num:'IBM Plex Mono','Noto Sans Tamil',ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1a1e; --surface:#16252b; --ink:#e6f0f2; --muted:#93a9b0; --line:#294049;
+    --accent:#4fb6d1; --accent-soft:#183843;
+    --good:#58c98d; --good-bg:#16352a; --warn:#f0b04a; --warn-bg:#3b2d12; --crit:#ff8a80; --crit-bg:#41201e; --info:#a5bcc3; --info-bg:#203238;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1a1e; --surface:#16252b; --ink:#e6f0f2; --muted:#93a9b0; --line:#294049;
+  --accent:#4fb6d1; --accent-soft:#183843;
+  --good:#58c98d; --good-bg:#16352a; --warn:#f0b04a; --warn-bg:#3b2d12; --crit:#ff8a80; --crit-bg:#41201e; --info:#a5bcc3; --info-bg:#203238;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-size:20px;margin:0;font-weight:600;letter-spacing:.01em}
+h1 small{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
+h2{font-size:14px;margin:0 0 8px;font-weight:600;text-transform:none}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:var(--surface)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+button,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;min-height:34px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.banner{background:var(--info-bg);color:var(--info);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between}
+.banner b{font-family:var(--font-num);font-weight:500;color:var(--ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.controls label{color:var(--muted);font-size:13px}
+.lim{font-family:var(--font-num);font-size:12px;color:var(--muted)}
+.zones{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
+.zone{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--good);border-radius:10px;padding:12px}
+.zone.s1{border-left-color:var(--warn)} .zone.s2{border-left-color:var(--crit)}
+.zhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.zname{font-weight:600;font-size:16px}
+.chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-left:6px;font-weight:400}
+.pill{font-weight:600;font-size:13px;padding:3px 10px;border-radius:6px}
+.pill.s0{background:var(--good-bg);color:var(--good)} .pill.s1{background:var(--warn-bg);color:var(--warn)} .pill.s2{background:var(--crit-bg);color:var(--crit)}
+.vals{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:8px}
+.val{border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.val .k{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.val .n{font-family:var(--font-num);font-size:20px;font-variant-numeric:tabular-nums}
+.val .u{font-size:12px;color:var(--muted);margin-left:3px;font-family:var(--font-body)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--good)}
+.dot.doubt{background:var(--warn);border-radius:2px} .dot.bad{background:var(--crit);transform:rotate(45deg);border-radius:1px}
+.rel{align-self:flex-start;font-size:13px;padding:4px 8px;border-radius:6px;display:inline-block;margin-bottom:4px}
+.rel.ok{background:var(--good-bg);color:var(--good)} .rel.doubt{background:var(--warn-bg);color:var(--warn)} .rel.bad{background:var(--crit-bg);color:var(--crit)}
+.note{font-size:12px;color:var(--muted);margin:2px 0}
+.note.strong{color:var(--crit);font-weight:500}
+svg.spark{width:100%;height:auto;display:block;margin-top:6px}
+.chartbox{margin-top:auto;padding-top:6px}
+.cap{font-size:12px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+ul.alerts{list-style:none;margin:0;padding:0;max-height:340px;overflow:auto}
+ul.alerts>li{border-top:1px solid var(--line);padding:8px 0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+ul.alerts>li:first-child{border-top:0}
+.sev{font-size:12px;font-weight:600;padding:1px 8px;border-radius:6px;height:fit-content}
+.sev.i{background:var(--info-bg);color:var(--info)} .sev.w{background:var(--warn-bg);color:var(--warn)} .sev.c{background:var(--crit-bg);color:var(--crit)}
+.atime{font-family:var(--font-num);font-size:12px;color:var(--muted)}
+ul.alerts ol{margin:2px 0 0 18px;padding:0;color:var(--muted);font-size:13px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;border-top:0}
+td.r{font-weight:600}
+td.r.p{color:var(--good)} td.r.f{color:var(--crit)}
+footer{font-size:12px;color:var(--muted);margin-top:8px}
+@media (prefers-reduced-motion: no-preference){.zone{transition:border-left-color .3s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span data-i="title"></span><small data-i="sub"></small></h1>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Language">
+        <button id="lang-en" type="button" aria-pressed="true">English</button>
+        <button id="lang-ta" type="button" aria-pressed="false">தமிழ்</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="banner" role="note">
+    <span data-i="banner"></span>
+    <span><span data-i="pondTime"></span>: <b id="clock">--:--</b></span>
+  </div>
+
+  <section class="panel" aria-labelledby="h-scn">
+    <h2 id="h-scn" data-i="scn"></h2>
+    <div class="controls">
+      <label for="species" data-i="species"></label>
+      <select id="species">
+        <option value="tilapia">Tilapia</option>
+        <option value="carp">Rohu / Catla</option>
+        <option value="pangasius">Pangasius</option>
+        <option value="shrimp">Shrimp</option>
+      </select>
+      <span class="lim" id="lim"></span>
+    </div>
+    <div class="controls" style="margin-top:8px">
+      <label for="zonesel" data-i="zone"></label>
+      <select id="zonesel"><option>A</option><option>B</option><option>C</option></select>
+      <button type="button" id="b-stuck" data-i="stuck"></button>
+      <button type="button" id="b-spike" data-i="spike"></button>
+      <button type="button" id="b-drop" data-i="drop"></button>
+      <button type="button" id="b-fix" data-i="fix"></button>
+      <span style="flex:1"></span>
+      <button type="button" id="b-run" class="primary"></button>
+      <label for="speed" data-i="speed"></label>
+      <select id="speed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select>
+      <button type="button" id="b-reset" data-i="reset"></button>
+    </div>
+  </section>
+
+  <section class="zones" id="zones" aria-live="off"></section>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-al">
+      <h2 id="h-al" data-i="alerts"></h2>
+      <p class="note" data-i="recOnly"></p>
+      <ul class="alerts" id="alerts" role="log"></ul>
+    </section>
+    <section class="panel" aria-labelledby="h-t">
+      <h2 id="h-t" data-i="tests"></h2>
+      <button type="button" id="b-tests" data-i="runTests"></button>
+      <div class="tablewrap"><table id="ttable"></table></div>
+      <p class="note" data-i="testNote"></p>
+    </section>
+  </div>
+  <footer data-i="footer"></footer>
+</div>
+
+<script>
+/* ---------- Text (English / Tamil) ---------- */
+const I18N={
+en:{title:'AquaGuard AI',sub:'Fish pond monitoring prototype',
+ banner:'Simulated data. Time-lapse: each reading stands for 5 minutes of pond time.',pondTime:'Pond time',
+ species:'Species profile',run:'Run',pause:'Pause',reset:'Reset',speed:'Speed',
+ scn:'Try a scenario',zone:'Zone',stuck:'Freeze DO sensor',spike:'Spike pH reading',drop:'Start DO decline',fix:'Farmer fixes the issue',
+ normal:'Normal',warn:'Warning',crit:'Critical',trusted:'Trusted',doubt:'Doubtful',bad:'Unreliable',
+ sim:'Simulated',live:'Live sensor',zoneWord:'Zone',
+ do:'Dissolved oxygen',ph:'pH',temp:'Temperature',turb:'Turbidity',
+ r_stuck:'stuck value',r_jump:'sudden jump',r_range:'impossible value',r_recent:'recent jump',
+ checkSensor:'Check sensor',verify:'Verify with a test kit',usingLast:'Using last trusted reading from {m} min ago',
+ chart:'DO, last 4 h of pond time',
+ alerts:'Alerts',none:'No alerts yet',recOnly:'Recommendation only. The system does not control equipment.',
+ sevI:'Sensor',sevW:'Warning',sevC:'Critical',
+ a_trend:'Zone {zone}: DO is falling ({v} mg/L). It may reach the critical limit in about {m} min.',
+ a_low:'Zone {zone}: DO is low ({v} mg/L), below the warning limit.',
+ a_crit:'Zone {zone}: DO is critical ({v} mg/L).',
+ a_ph:'Zone {zone}: pH {v} is outside the safe range.',
+ a_temp:'Zone {zone}: temperature {v} °C is outside the safe range.',
+ a_fault:'Zone {zone}: {param} sensor looks unreliable ({reason}).',
+ s_do1:'Check DO with a test kit.',s_do2:'Inspect the aerator and water movement.',s_crit2:'Start the aerator by hand if it is off.',
+ s_ch1:'Check with a test kit.',s_ch2:'Check inflow, feeding and weather.',s_f1:'Clean the probe and check the cable.',s_f2:'Verify with a test kit.',
+ limits:'Warning below {w} mg/L, critical below {c} mg/L',
+ tests:'Scenario tests',runTests:'Run scenario tests',colScn:'Scenario',colCheck:'Check',colExp:'Expected',colAct:'Actual',colRes:'Result',pass:'Pass',fail:'Fail',
+ sc_normal:'Normal night',sc_fault:'Faulty sensors',sc_drop:'Falling DO',
+ c_n1:'No warning or critical alerts',c_n2:'All zones read Trusted at the end',
+ c_f1:'Frozen DO sensor in Zone B flagged Unreliable',c_f2:'pH spike in Zone C flagged',c_f3:'Faults alone raise no risk alerts',
+ c_d1:'Zone C warning comes before DO reaches the critical limit',c_d2:'Zones A and B raise no risk alerts',
+ e_zero:'0',e_3of3:'3 of 3',e_f1:'within 10 readings',e_f2:'on the spike reading',e_d1:'warning first',
+ a_num:'{n}',a_of3:'{n} of 3',a_after:'after {n} readings',a_notdet:'not detected',a_flagged:'flagged',a_missed:'missed',a_earlier:'{m} min earlier',a_notearlier:'not earlier',
+ testNote:'Results come from simulated data. No accuracy claim is made.',
+ footer:'Species limits are indicative and must be confirmed with local fisheries guidance. Tamil wording needs review by a Tamil speaker.'},
+ta:{title:'அக்வாகார்டு AI',sub:'மீன் குள கண்காணிப்பு முன்மாதிரி',
+ banner:'உருவகப்படுத்தப்பட்ட தரவு. நேரம் துரிதப்படுத்தப்பட்டுள்ளது: ஒவ்வொரு அளவீடும் குளத்தின் 5 நிமிடத்தைக் குறிக்கிறது.',pondTime:'குள நேரம்',
+ species:'மீன் இனம்',run:'இயக்கு',pause:'நிறுத்து',reset:'மீட்டமை',speed:'வேகம்',
+ scn:'ஒரு சூழலை முயன்று பாருங்கள்',zone:'மண்டலம்',stuck:'DO சென்சாரை முடக்கு',spike:'pH அளவீட்டில் திடீர் ஏற்றம்',drop:'DO குறைவைத் தொடங்கு',fix:'விவசாயி சரிசெய்கிறார்',
+ normal:'இயல்பு',warn:'எச்சரிக்கை',crit:'அபாயம்',trusted:'நம்பகமானது',doubt:'சந்தேகத்திற்குரியது',bad:'நம்பகமற்றது',
+ sim:'உருவகப்படுத்தப்பட்டது',live:'நேரடி சென்சார்',zoneWord:'மண்டலம்',
+ do:'கரைந்த ஆக்ஸிஜன்',ph:'pH',temp:'வெப்பநிலை',turb:'கலங்கல்',
+ r_stuck:'மாறாத மதிப்பு',r_jump:'திடீர் மாற்றம்',r_range:'சாத்தியமற்ற மதிப்பு',r_recent:'சமீபத்திய மாற்றம்',
+ checkSensor:'சென்சாரைச் சரிபார்க்கவும்',verify:'சோதனைக் கருவியால் சரிபார்க்கவும்',usingLast:'{m} நிமிடங்களுக்கு முன் பெற்ற நம்பகமான அளவீடு பயன்படுத்தப்படுகிறது',
+ chart:'DO, குள நேரத்தின் கடைசி 4 மணி',
+ alerts:'எச்சரிக்கைகள்',none:'இதுவரை எச்சரிக்கை இல்லை',recOnly:'இது பரிந்துரை மட்டுமே. உபகரணங்களை இந்த அமைப்பு இயக்காது.',
+ sevI:'சென்சார்',sevW:'எச்சரிக்கை',sevC:'அபாயம்',
+ a_trend:'மண்டலம் {zone}: DO குறைந்து வருகிறது ({v} mg/L). சுமார் {m} நிமிடங்களில் அபாய அளவை எட்டலாம்.',
+ a_low:'மண்டலம் {zone}: DO குறைவாக உள்ளது ({v} mg/L). எச்சரிக்கை அளவுக்குக் கீழே உள்ளது.',
+ a_crit:'மண்டலம் {zone}: DO அபாய நிலையில் உள்ளது ({v} mg/L).',
+ a_ph:'மண்டலம் {zone}: pH {v} பாதுகாப்பான வரம்புக்கு வெளியே உள்ளது.',
+ a_temp:'மண்டலம் {zone}: வெப்பநிலை {v} °C பாதுகாப்பான வரம்புக்கு வெளியே உள்ளது.',
+ a_fault:'மண்டலம் {zone}: {param} சென்சார் நம்பகமற்றதாகத் தெரிகிறது ({reason}).',
+ s_do1:'சோதனைக் கருவியால் DO அளவைச் சரிபார்க்கவும்.',s_do2:'காற்றூட்டியையும் நீர் ஓட்டத்தையும் பார்வையிடவும்.',s_crit2:'காற்றூட்டி நின்றிருந்தால் கையால் இயக்கவும்.',
+ s_ch1:'சோதனைக் கருவியால் சரிபார்க்கவும்.',s_ch2:'நீர் வரத்து, தீவனம், வானிலை ஆகியவற்றைப் பார்க்கவும்.',s_f1:'சென்சார் முனையைச் சுத்தம் செய்து, இணைப்புக் கம்பியைச் சரிபார்க்கவும்.',s_f2:'சோதனைக் கருவியால் உறுதிசெய்யவும்.',
+ limits:'எச்சரிக்கை: {w} mg/L-க்குக் கீழ், அபாயம்: {c} mg/L-க்குக் கீழ்',
+ tests:'சூழல் சோதனைகள்',runTests:'சோதனைகளை இயக்கு',colScn:'சூழல்',colCheck:'சோதிக்கப்படுவது',colExp:'எதிர்பார்த்தது',colAct:'கிடைத்தது',colRes:'முடிவு',pass:'தேர்ச்சி',fail:'தோல்வி',
+ sc_normal:'இயல்பான இரவு',sc_fault:'பழுதான சென்சார்கள்',sc_drop:'குறையும் DO',
+ c_n1:'எச்சரிக்கை அல்லது அபாய அறிவிப்பு இல்லை',c_n2:'இறுதியில் எல்லா மண்டலங்களும் நம்பகமானவை',
+ c_f1:'மண்டலம் B-இல் முடங்கிய DO சென்சார் நம்பகமற்றது எனக் குறிக்கப்படுதல்',c_f2:'மண்டலம் C-இல் pH ஏற்றம் குறிக்கப்படுதல்',c_f3:'பழுதுகளால் மட்டும் இடர் எச்சரிக்கை எழவில்லை',
+ c_d1:'DO அபாய அளவை எட்டும் முன் மண்டலம் C-க்கு எச்சரிக்கை வருதல்',c_d2:'மண்டலம் A, B-க்கு இடர் எச்சரிக்கை இல்லை',
+ e_zero:'0',e_3of3:'3 / 3',e_f1:'10 அளவீடுகளுக்குள்',e_f2:'ஏற்றம் வந்த அளவீட்டிலேயே',e_d1:'முதலில் எச்சரிக்கை',
+ a_num:'{n}',a_of3:'{n} / 3',a_after:'{n} அளவீடுகளுக்குப் பிறகு',a_notdet:'கண்டறியப்படவில்லை',a_flagged:'குறிக்கப்பட்டது',a_missed:'தவறியது',a_earlier:'{m} நிமிடம் முன்பே',a_notearlier:'முன்பே இல்லை',
+ testNote:'முடிவுகள் உருவகப்படுத்தப்பட்ட தரவிலிருந்து பெறப்பட்டவை. துல்லியம் குறித்து எந்த உரிமைகோரலும் இல்லை.',
+ footer:'இன வரம்புகள் மாதிரி மதிப்புகள் மட்டுமே. உள்ளூர் மீன்வளத் துறை வழிகாட்டுதலுடன் உறுதிசெய்ய வேண்டும். தமிழ்ச் சொற்களை ஒரு தமிழ் அறிந்தவர் சரிபார்க்க வேண்டும்.'}
+};
+let LANG='en';
+function t(k,a){let s=(I18N[LANG][k]!==undefined?I18N[LANG][k]:I18N.en[k])||k;if(a)for(const x in a)s=s.split('{'+x+'}').join(a[x]);return s;}
+
+/* ---------- Engine ---------- */
+const PARAMS=['do','ph','temp','turb'];
+const UNITS={do:'mg/L',ph:'',temp:'°C',turb:'NTU'};
+const DEC={do:2,ph:2,temp:2,turb:1};
+const RANGE={do:[0,20],ph:[0,14],temp:[0,50],turb:[0,3000]};
+const JUMP={do:2.0,ph:1.0,temp:4,turb:150};
+const STUCK_DOUBT=6,STUCK_BAD=10,TICK_MIN=5,TREND_PTS=8,TREND_MIN_PTS=6,HORIZON_MIN=60,SLOPE_MIN=-0.0015;
+const SPECIES={tilapia:{w:4,c:3,ph:[6.5,8.5],temp:[26,32]},carp:{w:4,c:3,ph:[6.5,8.5],temp:[25,32]},pangasius:{w:3,c:2,ph:[6.5,8.5],temp:[26,32]},shrimp:{w:4.5,c:3.5,ph:[7.5,8.5],temp:[26,32]}};
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0;while(!u)u=r();const v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function rnd(v,p){const f=Math.pow(10,DEC[p]);return Math.round(v*f)/f;}
+
+class Sim{
+  constructor(seed,species){
+    this.rng=mulberry32(seed);this.species=species||'tilapia';this.tick=0;this.alerts=[];this.aid=0;
+    const bases=[{do:6.3,ph:7.9,temp:28.6,turb:42},{do:6.0,ph:8.0,temp:28.9,turb:55},{do:5.9,ph:7.8,temp:29.1,turb:38}];
+    this.zones=['A','B','C'].map((id,i)=>({id,base:bases[i],drop:0,dropOn:false,recover:false,stuck:{},spikePending:{},
+      hist:{do:[],ph:[],temp:[],turb:[]},ref:{},badRun:{},recent:{},sev:0,pf:{},status:{sev:0,kind:'',info:{},last:null}}));
+  }
+  zone(id){return this.zones.find(z=>z.id===id);}
+  step(){
+    this.tick++;const tm=this.tick*TICK_MIN;
+    for(const z of this.zones){
+      if(z.dropOn)z.drop=Math.min(z.drop+0.12,z.base.do-1.2);
+      else if(z.recover){z.drop=Math.max(0,z.drop-0.15);if(z.drop===0)z.recover=false;}
+      const k=this.tick,ph0=z.id.charCodeAt(0);
+      const truth={
+        do:z.base.do+0.25*Math.sin(k*0.07+ph0)-z.drop+gauss(this.rng)*0.04,
+        ph:z.base.ph+0.04*Math.sin(k*0.05+ph0)+gauss(this.rng)*0.02,
+        temp:z.base.temp+0.2*Math.sin(k*0.03+ph0)+gauss(this.rng)*0.05,
+        turb:z.base.turb+gauss(this.rng)*1.5};
+      for(const p of PARAMS){
+        let v=rnd(truth[p],p);const h=z.hist[p];const prev=h.length?h[h.length-1].v:null;
+        if(z.stuck[p]&&prev!==null)v=prev;
+        if(z.spikePending[p]){v=rnd(v+z.spikePending[p],p);z.spikePending[p]=0;}
+        h.push({t:tm,v,flag:'ok',reason:''});
+        this.assess(z,p,h);
+      }
+      this.evaluate(z,tm);
+    }
+  }
+  assess(z,p,h){
+    const r=h[h.length-1],v=r.v;let flag='ok',reason='';
+    if(v<RANGE[p][0]||v>RANGE[p][1]){flag='bad';reason='range';}
+    else{
+      let n=1;for(let i=h.length-2;i>=0&&h[i].v===v;i--)n++;
+      if(n>=STUCK_BAD){flag='bad';reason='stuck';}else if(n>=STUCK_DOUBT){flag='doubt';reason='stuck';}
+      if(flag==='ok'&&z.ref[p]!==undefined){
+        if(Math.abs(v-z.ref[p])>JUMP[p]){
+          z.badRun[p]=(z.badRun[p]||0)+1;
+          if(z.badRun[p]>=3){flag='doubt';reason='jump';z.ref[p]=v;z.badRun[p]=0;}
+          else{flag='bad';reason='jump';z.recent[p]=5;}
+        }else z.badRun[p]=0;
+      }
+      if(flag==='ok'&&z.recent[p]>0){flag='doubt';reason='recent';z.recent[p]--;}
+      if(flag==='ok'||(flag==='doubt'&&reason==='recent'))z.ref[p]=v;
+    }
+    r.flag=flag;r.reason=reason;
+  }
+  evaluate(z,tm){
+    const sp=SPECIES[this.species];
+    const ok=z.hist.do.filter(r=>r.flag==='ok');const pts=ok.slice(-TREND_PTS);const last=ok.length?ok[ok.length-1]:null;
+    let sev=0,kind='',info={};
+    if(last){
+      const cur=last.v;
+      if(cur<=sp.c){sev=2;kind='crit';info={v:cur};}
+      else if(cur<=sp.w){sev=1;kind='low';info={v:cur};}
+      else if(pts.length>=TREND_MIN_PTS){
+        const n=pts.length,mx=pts.reduce((s,q)=>s+q.t,0)/n,my=pts.reduce((s,q)=>s+q.v,0)/n;
+        let nu=0,de=0;for(const q of pts){nu+=(q.t-mx)*(q.v-my);de+=(q.t-mx)*(q.t-mx);}
+        const slope=de?nu/de:0;
+        if(slope<SLOPE_MIN){const m=(cur-sp.c)/-slope;if(m<=HORIZON_MIN){sev=1;kind='trend';info={v:cur,m:Math.max(1,Math.round(m))};}}
+      }
+    }
+    if(sev===0){
+      for(const p of ['ph','temp']){
+        const o=z.hist[p].filter(r=>r.flag==='ok');const q=o.length?o[o.length-1]:null;
+        if(q&&(q.v<sp[p][0]||q.v>sp[p][1])){sev=1;kind=p;info={v:q.v};break;}
+      }
+    }
+    z.status={sev,kind,info,last};
+    if(sev>z.sev)this.pushAlert({tick:this.tick,t:tm,zone:z.id,kind,sev,...info});
+    z.sev=sev;
+    for(const p of PARAMS){
+      const r=z.hist[p][z.hist[p].length-1],pf=z.pf[p]||'ok';
+      if((r.flag==='bad'&&pf!=='bad')||(r.flag==='doubt'&&r.reason==='stuck'&&pf==='ok'))
+        this.pushAlert({tick:this.tick,t:tm,zone:z.id,kind:'fault',sev:0,param:p,reason:r.reason});
+      z.pf[p]=r.flag;
+    }
+  }
+  pushAlert(a){a.id=++this.aid;this.alerts.unshift(a);}
+  inject(type,zid){
+    const z=this.zone(zid);
+    if(type==='stuck')z.stuck.do=true;
+    if(type==='spike')z.spikePending.ph=2.5;
+    if(type==='drop'){z.dropOn=true;z.recover=false;}
+    if(type==='fix'){z.stuck={};z.dropOn=false;z.recover=true;}
+  }
+  zoneRel(z){
+    let worst={flag:'ok',p:'',reason:''};
+    for(const p of PARAMS){const r=z.hist[p][z.hist[p].length-1];if(!r)continue;
+      const rank=f=>f==='bad'?2:f==='doubt'?1:0;
+      if(rank(r.flag)>rank(worst.flag))worst={flag:r.flag,p,reason:r.reason};}
+    return worst;
+  }
+}
+
+/* ---------- Scenario tests ---------- */
+function runTests(species){
+  const rows=[];const cnt=s=>s.alerts.filter(a=>a.sev>=1).length;
+  // 1. Normal night
+  let s=new Sim(11,species);for(let i=0;i<60;i++)s.step();
+  const n1=cnt(s);rows.push({sc:'sc_normal',c:'c_n1',e:['e_zero'],a:['a_num',{n:n1}],pass:n1===0});
+  const trustedZones=s.zones.filter(z=>s.zoneRel(z).flag==='ok').length;
+  rows.push({sc:'sc_normal',c:'c_n2',e:['e_3of3'],a:['a_of3',{n:trustedZones}],pass:trustedZones===3});
+  // 2. Faulty sensors
+  s=new Sim(12,species);const injB=20,injC=30;let detB=null,detC=null;
+  for(let i=1;i<=60;i++){
+    if(i===injB)s.inject('stuck','B');
+    if(i===injC)s.inject('spike','C');
+    s.step();
+    const b=s.zone('B').hist.do,c=s.zone('C').hist.ph;
+    if(detB===null&&i>=injB&&b[b.length-1].flag==='bad')detB=i-injB;
+    if(detC===null&&i>=injC&&c[c.length-1].flag==='bad')detC=i-injC;
+  }
+  rows.push({sc:'sc_fault',c:'c_f1',e:['e_f1'],a:detB===null?['a_notdet']:['a_after',{n:detB}],pass:detB!==null&&detB<=10});
+  rows.push({sc:'sc_fault',c:'c_f2',e:['e_f2'],a:[detC===0?'a_flagged':'a_missed'],pass:detC===0});
+  const f3=cnt(s);rows.push({sc:'sc_fault',c:'c_f3',e:['e_zero'],a:['a_num',{n:f3}],pass:f3===0});
+  // 3. Falling DO in zone C
+  s=new Sim(13,species);const sp=SPECIES[species];let warnTick=null,critTick=null;
+  for(let i=1;i<=70;i++){
+    if(i===10)s.inject('drop','C');
+    s.step();
+    const c=s.zone('C');
+    if(warnTick===null&&s.alerts.some(a=>a.zone==='C'&&a.sev>=1))warnTick=i;
+    const rd=c.hist.do[c.hist.do.length-1].v;
+    if(critTick===null&&rd<=sp.c)critTick=i;
+  }
+  const lead=(warnTick!==null&&critTick!==null)?(critTick-warnTick)*TICK_MIN:null;
+  rows.push({sc:'sc_drop',c:'c_d1',e:['e_d1'],a:(lead!==null&&lead>0)?['a_earlier',{m:lead}]:['a_notearlier'],pass:lead!==null&&lead>0});
+  const d2=s.alerts.filter(a=>a.sev>=1&&a.zone!=='C').length;
+  rows.push({sc:'sc_drop',c:'c_d2',e:['e_zero'],a:['a_num',{n:d2}],pass:d2===0});
+  return rows;
+}
+
+/* ---------- UI ---------- */
+let sim,timer=null,running=true,speed=1,lastTests=null;
+const $=id=>document.getElementById(id);
+function clock(tm){const m=(18*60+tm)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+function newSim(){sim=new Sim(7,$('species').value);for(let i=0;i<40;i++)sim.step();}
+function sparkSVG(z,sp){
+  const pts=z.hist.do.slice(-48),W=240,H=64,lo=1.5,hi=8;
+  const X=i=>4+(i+48-pts.length)*(W-8)/47;
+  const Y=v=>H-4-(Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*(H-8);
+  const path=pts.map((r,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(r.v).toFixed(1)).join('');
+  let g='';for(const v of [2,4,6,8])g+=`<line x1="4" x2="${W-4}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1" opacity=".6"/>`;
+  g+=`<line x1="4" x2="${W-4}" y1="${Y(sp.w)}" y2="${Y(sp.w)}" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+  g+=`<line x1="4" x2="${W-4}" y1="${Y(sp.c)}" y2="${Y(sp.c)}" stroke="var(--crit)" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+  const area=path?path+`L${X(pts.length-1).toFixed(1)} ${H-4}L${X(0).toFixed(1)} ${H-4}Z`:'';
+  let marks='';pts.forEach((r,i)=>{if(r.flag==='bad')marks+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(r.v).toFixed(1)}" r="3" fill="none" stroke="var(--crit)" stroke-width="1.5"/>`;});
+  const lp=pts[pts.length-1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('chart')}">${g}<path d="${area}" fill="var(--accent)" opacity=".12"/><path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round"/>${marks}${lp?`<circle cx="${X(pts.length-1).toFixed(1)}" cy="${Y(lp.v).toFixed(1)}" r="3.2" fill="var(--accent)"/>`:''}</svg>`;
+}
+function renderZones(){
+  const sp=SPECIES[sim.species];let h='';
+  for(const z of sim.zones){
+    const st=z.status,rel=sim.zoneRel(z);
+    const lastDO=z.hist.do[z.hist.do.length-1];
+    const stName=[t('normal'),t('warn'),t('crit')][st.sev];
+    let vals='';
+    for(const p of PARAMS){
+      const r=z.hist[p][z.hist[p].length-1];
+      const tip=r.flag==='ok'?t('trusted'):(r.flag==='doubt'?t('doubt'):t('bad'))+(r.reason?': '+t('r_'+r.reason):'');
+      vals+=`<div class="val"><div class="k"><span class="dot ${r.flag==='ok'?'':r.flag}" title="${tip}"></span>${t(p)}</div><div class="n">${r.v.toFixed(DEC[p]===2&&p==='ph'?2:DEC[p])}<span class="u">${UNITS[p]}</span></div></div>`;
+    }
+    let relTxt=t('trusted'),notes='';
+    if(rel.flag!=='ok'){relTxt=(rel.flag==='bad'?t('bad'):t('doubt'))+': '+t(rel.p)+', '+t('r_'+rel.reason);notes+=`<div class="note">${t('checkSensor')}</div>`;}
+    if(lastDO.flag!=='ok'&&(st.sev>=1||lastDO.v<=sp.w))notes+=`<div class="note strong">${t('verify')}</div>`;
+    if(st.last&&st.last.t<lastDO.t)notes+=`<div class="note">${t('usingLast',{m:lastDO.t-st.last.t})}</div>`;
+    h+=`<article class="zone s${st.sev}" aria-label="${t('zoneWord')} ${z.id}">
+      <div class="zhead"><div class="zname">${t('zoneWord')} ${z.id}<span class="chip">${t('sim')}</span></div><span class="pill s${st.sev}">${stName}</span></div>
+      <div class="vals">${vals}</div>
+      <span class="rel ${rel.flag}">${relTxt}</span>${notes}
+      <div class="chartbox">${sparkSVG(z,sp)}<div class="cap">${t('chart')}</div></div></article>`;
+  }
+  $('zones').innerHTML=h;
+}
+function alertText(a){
+  const args={zone:a.zone,v:a.v!==undefined?a.v.toFixed(a.kind==='ph'?2:(a.kind==='temp'?1:2)):'',m:a.m};
+  if(a.kind==='fault'){args.param=t(a.param);args.reason=t('r_'+a.reason);}
+  return t('a_'+a.kind,args);
+}
+function alertSteps(a){
+  if(a.kind==='fault')return [t('s_f1'),t('s_f2')];
+  if(a.kind==='ph'||a.kind==='temp')return [t('s_ch1'),t('s_ch2')];
+  return [t('s_do1'),a.kind==='crit'?t('s_crit2'):t('s_do2')];
+}
+function renderAlerts(){
+  if(!sim.alerts.length){$('alerts').innerHTML=`<li><span></span><span class="note">${t('none')}</span></li>`;return;}
+  $('alerts').innerHTML=sim.alerts.slice(0,12).map(a=>{
+    const cls=a.sev===2?'c':a.sev===1?'w':'i',lab=a.sev===2?t('sevC'):a.sev===1?t('sevW'):t('sevI');
+    const steps=alertSteps(a).map(s=>`<li>${s}</li>`).join('');
+    return `<li><span class="sev ${cls}">${lab}</span><div><span class="atime">${clock(a.t)}</span> ${alertText(a)}<ol>${steps}</ol></div></li>`;
+  }).join('');
+}
+function renderTests(){
+  if(!lastTests)lastTests=runTests($('species').value);
+  const head=`<tr><th>${t('colScn')}</th><th>${t('colCheck')}</th><th>${t('colExp')}</th><th>${t('colAct')}</th><th>${t('colRes')}</th></tr>`;
+  const body=lastTests.map(r=>`<tr><td>${t(r.sc)}</td><td>${t(r.c)}</td><td>${t(r.e[0],r.e[1])}</td><td>${t(r.a[0],r.a[1])}</td><td class="r ${r.pass?'p':'f'}">${r.pass?t('pass'):t('fail')}</td></tr>`).join('');
+  $('ttable').innerHTML=head+body;
+}
+function renderStatic(){
+  document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=t(el.dataset.i);});
+  $('b-run').textContent=running?t('pause'):t('run');
+  const sp=SPECIES[$('species').value];$('lim').textContent=t('limits',{w:sp.w,c:sp.c});
+  document.documentElement.lang=LANG==='ta'?'ta':'en';
+  $('lang-en').setAttribute('aria-pressed',LANG==='en');$('lang-ta').setAttribute('aria-pressed',LANG==='ta');
+}
+function render(){
+  $('clock').textContent=clock(sim.tick*TICK_MIN);
+  renderZones();renderAlerts();
+}
+function loop(){
+  clearInterval(timer);
+  if(running)timer=setInterval(()=>{sim.step();render();},Math.round(900/speed));
+}
+function setLang(l){LANG=l;renderStatic();render();renderTests();}
+$('lang-en').onclick=()=>setLang('en');$('lang-ta').onclick=()=>setLang('ta');
+$('b-run').onclick=()=>{running=!running;renderStatic();loop();};
+$('speed').onchange=e=>{speed=+e.target.value;loop();};
+$('b-reset').onclick=()=>{newSim();lastTests=null;render();renderTests();};
+$('species').onchange=()=>{newSim();lastTests=null;renderStatic();render();renderTests();};
+$('b-stuck').onclick=()=>{sim.inject('stuck',$('zonesel').value);};
+$('b-spike').onclick=()=>{sim.inject('spike',$('zonesel').value);};
+$('b-drop').onclick=()=>{sim.inject('drop',$('zonesel').value);};
+$('b-fix').onclick=()=>{sim.inject('fix',$('zonesel').value);};
+$('b-tests').onclick=()=>{lastTests=runTests($('species').value);renderTests();};
+newSim();renderStatic();render();renderTests();loop();
+</script>
+</body>
+</html>
